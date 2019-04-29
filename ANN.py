@@ -120,15 +120,15 @@ for i in range(len(npdata)):
     X[:,i] = npdata[i,:]
 
 def sigmoid(z):
-    z = 1 / 1(1 + np.exp(-z))
+
+    z = 1 / (1 + np.exp(-z))
     return z
 
 def sigmoid_deriv(z):
-    z = 1/1(1 + np.exp(-z))
-    dz = z * (1 - z)
 
+    dz = sigmoid(z) * (1 - z)
     return dz
-    
+
 def init_weights(input, hidden, output):
 
     np.random.seed(2)
@@ -146,3 +146,29 @@ def init_weights(input, hidden, output):
 params = init_weights(X.shape[0], n_nodes[1], 1)
 
 #L(y_hat, y) = -(y * np.log(y_hat) + (1 - y) * log(1-y_hat))
+
+#Forward Propagation Step Function
+def forward_prop(X, params):
+
+    # Retrieve Current Weights and Biases from dict
+    w1 = params['w1']
+    b1 = params['b1']
+    w2 = params['w2']
+    b2 = params['b2']
+
+    # Layer 1 output, dot of layer 1 weights and X + layer 1 biases
+    l1 = w1 @ X + b1
+    # Result of layer one, p1 = sigma of l1
+    p1 = sigmoid(l1)
+    # Layer 2 output, dot of layer 2 weights and p1 + layer 2 biases
+    l2 = w2 @ p1 + b2
+    # Result of network, then used for update step
+    p2 = sigmoid(l2)
+
+    # Restore current results in dict to calculate cost and update weights.
+    results = {"l1" : l1,
+               "p1" : p1,
+               "l2" : l2,
+               "p2" : p2}
+
+    return p2, results
