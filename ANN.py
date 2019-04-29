@@ -14,6 +14,7 @@ statistics = {}
 nullcount = 0
 
 # Check for Categorical Data
+# Labels are categorical : i.e Normal Abnormal
 category = data.select_dtypes(exclude=["number","bool"])
 if not category.empty:
     print('Categorical Values Present in Columns: {}'.format(category.columns.values))
@@ -41,10 +42,12 @@ for i, col in enumerate(data_iter):
         statistics[label] = tmp[j]
 
 # Feature-Wise Normalisation
+# Normalise so features have similar ranges for gradient descent to converge faster + no oscillation of weights.
 norm_data = np.array(data.drop(data.columns[[0]], axis=1))
 for i, col in enumerate(data_iter):
     norm_data[:,i] = (norm_data[:,i] - np.mean(norm_data[:,i])) / (np.std(norm_data[:,i]) + 1e-7)
 
+# Size of data, 996,13 |||| 12 Features ||||
 # Plots
 sns.boxplot(x=norm_data[:,0],y=data['Status']);
 
@@ -93,7 +96,7 @@ def find_outliers(normals,abnormals, feature):
     return minor_normal_outliers, major_normal_outliers, minor_abnormal_outliers, major_abnormal_outliers
 
 outliers = {}
-
+# Using a simple script we can calculate the minor and major outliers for both classes for every feature in the feature set.
 for i in range(1, 13):
     min_norm, maj_norm, min_abn, maj_abn = [[] for i in range(4)]
     min_norm, maj_norm, min_abn, maj_abn = find_outliers(normals[:,i], abnormals[:,i], data.columns.values[i])
@@ -103,4 +106,25 @@ for i in range(1, 13):
     outliers['minor_abnormal'+' '+data.columns.values[i]] = min_abn
     outliers['major_abnormal'+' '+data.columns.values[i]] = maj_abn
 
-# Size of data, 996,13 |||| 12 Features |||| Labels are categorical : i.e Normal Abnormal |||| Normalise so features have similar ranges for gradient descent to converge faster + no oscillation of weights.
+Y = np.zeros(labels.shape, dtype=int)
+for i in range(len(num_labels)):
+    if labels[i] == 'Normal':
+        Y[i] = 1
+    else:
+        Y[i] = 0
+Y.reshape(-1, 1)
+
+def sigmoid(z):
+    z = 1 / 1(1 + np.exp(-z))
+    return z
+
+def init_weights(size):
+    w = np.zeros(shape=(size, 1)) * 0.01
+    b = 0
+    return w, b
+
+w, b = init_weights(25)
+
+
+
+#def fortward_prop(w, b, X, Y):
