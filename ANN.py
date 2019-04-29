@@ -12,6 +12,7 @@ labels = np.array(data['Status'])
 stats = ['Median','Mean','Std','Min','Max']
 statistics = {}
 nullcount = 0
+n_nodes = [25,100,500]
 
 # Check for Categorical Data
 # Labels are categorical : i.e Normal Abnormal
@@ -112,19 +113,36 @@ for i in range(len(num_labels)):
         Y[i] = 1
     else:
         Y[i] = 0
-Y.reshape(-1, 1)
+Y = Y.reshape(-1, 1)
+
+X = np.zeros(npdata.shape).T
+for i in range(len(npdata)):
+    X[:,i] = npdata[i,:]
 
 def sigmoid(z):
     z = 1 / 1(1 + np.exp(-z))
     return z
 
-def init_weights(size):
-    w = np.zeros(shape=(size, 1)) * 0.01
-    b = 0
-    return w, b
+def sigmoid_deriv(z):
+    z = 1/1(1 + np.exp(-z))
+    dz = z * (1 - z)
 
-w, b = init_weights(25)
+    return dz
+    
+def init_weights(input, hidden, output):
 
+    np.random.seed(2)
+    w1 = np.random.randn(hidden, input) * 0.01
+    b1 = np.zeros((hidden, 1))
+    w2 = np.random.randn(output, hidden) * 0.01
+    b2 = np.zeros((output, 1))
 
+    params = {"w1" : w1,
+              "b1" : b1,
+              "w2" : w2,
+              "b2" : b2}
+    return params
 
-#def fortward_prop(w, b, X, Y):
+params = init_weights(X.shape[0], n_nodes[1], 1)
+
+#L(y_hat, y) = -(y * np.log(y_hat) + (1 - y) * log(1-y_hat))
