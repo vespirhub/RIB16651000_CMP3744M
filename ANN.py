@@ -108,12 +108,12 @@ for i in range(1, 13):
     outliers['major_abnormal'+' '+data.columns.values[i]] = maj_abn
 
 Y = np.zeros(labels.shape, dtype=int)
-for i in range(len(num_labels)):
+for i in range(len(Y)):
     if labels[i] == 'Normal':
         Y[i] = 1
     else:
         Y[i] = 0
-Y = Y.reshape(-1, 1)
+Y = Y.reshape(1, -1)
 
 X = np.zeros(npdata.shape).T
 for i in range(len(npdata)):
@@ -145,8 +145,6 @@ def init_weights(input, hidden, output):
 
 params = init_weights(X.shape[0], n_nodes[1], 1)
 
-#L(y_hat, y) = -(y * np.log(y_hat) + (1 - y) * log(1-y_hat))
-
 #Forward Propagation Step Function
 def forward_prop(X, params):
 
@@ -156,19 +154,94 @@ def forward_prop(X, params):
     w2 = params['w2']
     b2 = params['b2']
 
-    # Layer 1 output, dot of layer 1 weights and X + layer 1 biases
-    l1 = w1 @ X + b1
-    # Result of layer one, p1 = sigma of l1
-    p1 = sigmoid(l1)
-    # Layer 2 output, dot of layer 2 weights and p1 + layer 2 biases
-    l2 = w2 @ p1 + b2
-    # Result of network, then used for update step
-    p2 = sigmoid(l2)
+    # Layer 1 output, dot of layer 1 weights and X + layer 1 biases, "left side" of perceptron result
+    z1 = w1 @ X + b1
+    # Result of layer one, p1 = sigma of l1, "right side" of perceptron result
+    a1 = sigmoid(z1)
+    # Layer 2 output, dot of layer 2 weights and p1 + layer 2 biases, "left side" of perceptron result
+    z2 = w2 @ a1 + b2
+    # Result of network, then used for update step, "right side" of perceptron result our prediction, "y_hat"
+    a2 = sigmoid(z2)
 
-    # Restore current results in dict to calculate cost and update weights.
-    results = {"l1" : l1,
-               "p1" : p1,
-               "l2" : l2,
-               "p2" : p2}
+    # Store current results in dict to calculate cost and update weights.
+    model = {"z1" : z1,
+             "a1" : a1,
+             "z2" : z2,
+             "a2" : a2}
 
-    return p2, results
+    return a2, model
+
+def back_prop(X,Y,params,model):
+
+    w1 = params['w1']
+    w2 = params['w2']
+    a1 = model['a1']
+    a2 = model['a2']
+    m = X.shape[1]
+
+    dz2 = a2 - Y
+    dw2 = (1 / m) * dz2 @ a1.T
+    db2 = (1 / m) * np.sum(dz2,axis=1,keepdims=True)
+    dz1 = w2.T @ dz2 * 1-np.power(a1,2)
+    dw1 = (1 / m) * dz1 @ X.T
+    db1 = (1 / m) * np.sum(dz1,axis=1,keepdims=True)
+
+    gradients = {"dw1" : dw1,
+                 "db1" : db1,
+                 "dw2" : dw2,
+                 "db2" : db2}
+    return gradients
+
+def binary_crossentropy(y_hat, Y):
+
+    return -(1 / Y.shape[1]) * np.sum((Y * np.log(y_hat) + (1 - Y) * np.log(1-y_hat)))
+
+def update_step(learning_rate, params, gradients):
+
+    w1 = params['w1']
+    b1 = params['b1']
+    w2 = params['w2']
+    b2 = params['b2']
+
+    dw1 = gradients['dw1']
+    db1 = gradients['db1']
+    dw2 = gradients['dw2']
+    db2 = gradients['db2']
+
+    w1 = w1 - learning_rate * dw1
+    b1 = b1 - learning_rate * db1
+    w2 = w2 - learning_rate * dw2
+    b2 = b2 - learning_rate * db2
+
+    params = {"w1": w1,
+              "b1": b1,
+              "w2": w2,
+              "b2": b2}
+    return params
+
+
+def ANN(X,Y,hidden_nodes,iter, learning_rate):
+
+    np.random.seed(5)
+
+    x_size = X.shape[0]
+    y_size = Y.shape[1]
+
+    params = init_weights(x_size, hidden_nodes, y_size)
+    w1 = params['w1']
+    b1 = params['b1']
+    w2 = params['w2']
+    b2 = params['b2']
+
+    for i in range(iter):
+
+        a2, model = forward_prop(X, params)
+        loss = binary_crossentropy(a2, Y)
+        gradients = back_prop(X,Y,params,model)
+        params = update_step(learning_rate,params,gradients)
+
+    return params
+
+params = ANN(X, Y,hidden_nodes=100,iter=5000, learning_rate=0.02)
+
+print(params)
