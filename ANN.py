@@ -196,6 +196,17 @@ def binary_crossentropy(y_hat, Y):
 
     return -(1 / Y.shape[1]) * np.sum((Y * np.log(y_hat) + (1 - Y) * np.log(1-y_hat)))
 
+def find_acc(y_hat,y_true):
+    tp = np.sum((y_true == 1) & (y_hat == 1))
+    # fn = ((y_true == 1) & (y_hat == 0))
+    # fp = ((y_true == 0) & (y_hat == 1))
+    tn = np.sum((y_true == 0) & (y_hat == 0))
+
+    accuracy = tp + tn / y_true.shape[0]
+
+
+    return accuracy
+
 def update_step(learning_rate, params, gradients):
 
     w1 = params['w1']
@@ -245,8 +256,8 @@ def ANN(X,Y,hidden_nodes,iter, learning_rate):
         a2[a2<=0.5] = 0
         a2[a2>0.5] = 1
 
-        acc = (np.sum(a2 == Y) / X.shape[1])
-        print(i, loss, acc)
+        accuracy = find_acc(a2,Y)
+        print(i, loss, accuracy)
 
     return params
 
