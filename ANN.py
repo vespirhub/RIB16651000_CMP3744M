@@ -126,7 +126,7 @@ def sigmoid(z):
 
 def sigmoid_deriv(z):
 
-    dz = sigmoid(z) * (1 - z)
+    dz = sigmoid(z) * (1 - sigmoid(z))
     return dz
 
 def init_weights(input, hidden, output):
@@ -182,7 +182,7 @@ def back_prop(X,Y,params,model):
     dz2 = a2 - Y
     dw2 = (1 / m) * dz2 @ a1.T
     db2 = (1 / m) * np.sum(dz2,axis=1,keepdims=True)
-    dz1 = w2.T @ dz2 * 1-np.power(a1,2)
+    dz1 = w2.T @ dz2 * sigmoid_deriv(a1)
     dw1 = (1 / m) * dz1 @ X.T
     db1 = (1 / m) * np.sum(dz1,axis=1,keepdims=True)
 
@@ -222,8 +222,6 @@ def update_step(learning_rate, params, gradients):
 
 def ANN(X,Y,hidden_nodes,iter, learning_rate):
 
-    np.random.seed(5)
-
     x_size = X.shape[0]
     y_size = Y.shape[1]
 
@@ -235,13 +233,21 @@ def ANN(X,Y,hidden_nodes,iter, learning_rate):
 
     for i in range(iter):
 
+        rp = np.random.permutation(X.shape[1])
+        X = X[:,rp]
+        Y = Y[:,rp]
+
         a2, model = forward_prop(X, params)
         loss = binary_crossentropy(a2, Y)
         gradients = back_prop(X,Y,params,model)
         params = update_step(learning_rate,params,gradients)
 
+        a2[a2<=0.5] = 0
+        a2[a2>0.5] = 1
+
+        acc = (np.sum(a2 == Y) / X.shape[1])
+        print(i, loss, acc)
+
     return params
 
-params = ANN(X, Y,hidden_nodes=100,iter=5000, learning_rate=0.02)
-
-print(params)
+params = ANN(X, Y,hidden_nodes=n_nodes[-1], iter=1000, learning_rate=1e-1)
