@@ -45,7 +45,7 @@ for i, col in enumerate(data_iter):
 
 # Feature-Wise Normalisation
 # Normalise so features have similar ranges for gradient descent to converge faster + no oscillation of weights.
-norm_data = np.array(data.drop(data.columns[[0]], axis=1)).T
+norm_data = np.array(data.drop(data.columns[[0]], axis=1))
 for i, col in enumerate(data_iter):
     norm_data[:,i] = (norm_data[:,i] - np.mean(norm_data[:,i])) / (np.std(norm_data[:,i]) + 1e-7)
 
@@ -123,7 +123,7 @@ for i in range(len(npdata)):
     X[:,i] = npdata[i,:]
 X.shape
 
-X = norm_data
+X = norm_data.T
 
 def sigmoid(z):
 
@@ -273,13 +273,14 @@ def ANN(X,Y,hidden_nodes,iter, learning_rate):
         X = X[:,rp]
         Y = Y[:,rp]
 
+        if i % 1000 == 0:
+          learning_rate = learning_rate * .9
+
         a2, model = forward_prop(X, params)
         loss = binary_crossentropy(a2, Y)
         gradients = back_prop(X,Y,params,model)
         params = update_step(learning_rate,params,gradients)
 
-        if i % 500 == 0:
-          learning_rate = learning_rate * .9
 
         # a2[a2<=0.5] = 0
         # a2[a2>0.5] = 1
@@ -294,4 +295,4 @@ def ANN(X,Y,hidden_nodes,iter, learning_rate):
 
     return params
 
-params = ANN(X, Y,hidden_nodes=n_nodes[-1], iter=50000, learning_rate=2e-1)
+params = ANN(X, Y,hidden_nodes=n_nodes[-1], iter=50000, learning_rate=0.2)
