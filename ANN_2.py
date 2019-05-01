@@ -3,8 +3,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from sklearn.neural_network import MLPClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import export_graphviz
+import pydot
 
-data = pd.read_csv('CMP3744M_ADM_Assignment 2-dataset-nuclear_plants.csv')
+
+data = pd.read_csv('~/github/RIB16651000_CMP3744M/RIB16651000_CMP3744M-master/CMP3744M_ADM_Assignment 2-dataset-nuclear_plants.csv')
 data_iter = data.drop(data.columns[[0]], axis=1)
 sns.set()
 
@@ -135,15 +140,15 @@ def sigmoid_deriv(z):
     dz = sigmoid(z) * (1 - sigmoid(z))
     return dz
 
-def init_weights(input, hidden, output):
+def init_weights_he(input, hidden, output):
 
-    np.random.seed(2)
+    np.random.seed(3)
     w1 = np.random.randn(hidden, input) * np.sqrt(2/(input-1))
-    print("w1",w1)
+    #print("w1",w1)
     b1 = np.zeros((hidden, 1))
     #b1.shape
     w2 = np.random.randn(output, hidden)* np.sqrt(2/(hidden-1))
-    print("w2",w2)
+    #print("w2",w2)
     b2 = np.zeros((output, 1))
     #b2.shape
 
@@ -153,9 +158,20 @@ def init_weights(input, hidden, output):
               "b2" : b2}
     return params
 
-# input = 12
-# hidden = 500
-# output = 1
+def init_weights_xavier(input,hidden,output):
+
+    np.random.seed(3)
+    w1 = np.random.randn(hidden, input) * np.sqrt(2/(hidden+input))
+    b1 = np.zeros((hidden,1))
+    w2 = np.random.randn(output, hidden) * np.sqrt(2/(output+hidden))
+    b2 = np.zeros((output,1))
+
+    params = {"w1" : w1,
+              "b1" : b1,
+              "w2" : w2,
+              "b2" : b2}
+    return params
+
 # params = init_weights(X.shape[0], n_nodes[1], 1)
 
 #Forward Propagation Step Function
@@ -169,7 +185,6 @@ def forward_prop(X, params):
 
     # Layer 1 output, dot of layer 1 weights and X + layer 1 biases, "left side" of perceptron result
     z1 = w1 @ X + b1
-    #print("z1",z1.shape)
     # Result of layer one, p1 = sigma of l1, "right side" of perceptron result
     a1 = sigmoid(z1)
     #print("a1",a1.shape)
@@ -193,6 +208,7 @@ def back_prop(X,Y,params,model):
     w1 = params['w1']
     w2 = params['w2']
     a1 = model['a1']
+    z1 = model['z1']
     a2 = model['a2']
     m = X.shape[1]
 
@@ -201,13 +217,11 @@ def back_prop(X,Y,params,model):
     dw2 = (1 / m) * dz2 @ a1.T
     #print("dw2",dw2.shape,"a1",a1.T.shape)
     db2 = (1 / m) * np.sum(dz2,axis=1,keepdims=True)
-    db2.shape
-    dz1 = np.multiply(w2.T @ dz2,sigmoid_deriv(a1))
+    dz1 = np.multiply(w2.T @ dz2, sigmoid_deriv(z1))
     #print("dz1",dz1.shape)
     dw1 = (1 / m) * dz1 @ X.T
     #print("dw1",dw1.shape)
     db1 = (1 / m) * np.sum(dz1,axis=1,keepdims=True)
-    db1.shape
     gradients = {"dw1" : dw1,
                  "db1" : db1,
                  "dw2" : dw2,
@@ -224,8 +238,8 @@ def find_acc(y_hat,y_true):
     fp = np.sum((y_true == 0) & (y_hat == 1))
     tn = np.sum((y_true == 0) & (y_hat == 0))
 
-    accuracy = tp + tn / tp+tn+fp+fn
-    print('tp: {}' 'tn: {}' 'fp: {}' 'fn: {}'.format(tp,tn,fp,fn))
+    accuracy = (tp + tn) / (tp+tn+fp+fn)
+    #print('tp: {}' 'tn: {}' 'fp: {}' 'fn: {}'.format(tp,tn,fp,fn))
 
     return accuracy
 
@@ -253,7 +267,7 @@ def update_step(learning_rate, params, gradients):
     return params
 
 
-def ANN(X,Y,hidden_nodes,iter, learning_rate):
+def ANN(X, Y, hidden_nodes, batch_size, epochs, learning_rate):
 
     x_size = X.shape[0]
     x_size
@@ -261,38 +275,64 @@ def ANN(X,Y,hidden_nodes,iter, learning_rate):
 
     m = X.shape[1] # 996
 
-    params = init_weights(x_size, hidden_nodes, y_size)
-    w1 = params['w1']
-    b1 = params['b1']
-    w2 = params['w2']
-    b2 = params['b2']
+    params = init_weights_xavier(x_size, hidden_nodes, y_size)
 
-    for i in range(iter):
+    for i in range(epochs):
 
         rp = np.random.permutation(X.shape[1])
-        X = X[:,rp]
-        Y = Y[:,rp]
+        x = X[:,rp]
+        y = Y[:,rp]
 
-        if i % 1000 == 0:
+        if ((i % 500 == 0) & (i != 0)):
           learning_rate = learning_rate * .9
 
-        a2, model = forward_prop(X, params)
-        loss = binary_crossentropy(a2, Y)
-        gradients = back_prop(X,Y,params,model)
-        params = update_step(learning_rate,params,gradients)
+        counter = 0
+        for j in range(int(m/batch_size)):
 
+            x_train = x[:,counter:counter+batch_size]
+            y_train = y[:,counter:counter+batch_size]
 
-        # a2[a2<=0.5] = 0
-        # a2[a2>0.5] = 1
-        #accuracy = np.mean((np.sum((Y == 1) & (a2 == 1)) + np.sum((Y == 0) & (a2 == 0))) / X.shape[1])
+            a2, model = forward_prop(x_train, params)
+            loss = binary_crossentropy(a2, y_train)
+            gradients = back_prop(x_train,y_train,params,model)
+            params = update_step(learning_rate,params,gradients)
+
+            counter+=batch_size
+
+        a2, model = forward_prop(x, params)
+        loss = binary_crossentropy(a2, y)
         Yhat = np.round(a2)
-        acc = np.sum(Yhat == Y) / m
+        acc = find_acc(Yhat, y)
 
-        #acc = np.mean(((np.dot(Y, a2.T) + np.dot(1 - Y, 1 - a2.T)) / (Y.size) * 100))#find_acc(a2,Y)
-
-        if i % 10 == 0:
-            print(i, loss, "acc: {:.2f}".format(acc), learning_rate, np.sum(Yhat == Y))
+        print("epoch: {} - loss: {:.5f} - acc:{:.2f} - lr:{:.5f} - corrects: {}/{}".format(
+            i, loss, acc, learning_rate, np.sum(Yhat == y), m))
 
     return params
 
-params = ANN(X, Y,hidden_nodes=n_nodes[-1], iter=50000, learning_rate=0.2)
+params = ANN(X, Y, hidden_nodes=n_nodes[-1],
+    batch_size=12, epochs=50000, learning_rate=0.01)
+#
+# y_tree = Y.T.flatten()
+# X_tree = norm_data
+#
+# x_train, x_test, y_train, y_test = train_test_split(X_tree, y_tree, test_size=0.1)
+#
+# model = RandomForestClassifier(n_estimators=100, min_samples_leaf=1);
+#
+# model.fit(x_train, y_train);
+#
+# predictions = model.predict(x_test)
+#
+# abs_errors = abs(predictions - y_test)
+#
+# acc = 100 * np.sum(predictions == y_test) / x_test.shape[0]
+#
+# print('Accuracy:', np.round(int(acc)), '%.')
+#
+# tree = model.estimators_[-1]
+#
+# export_graphviz(tree, out_file = 'tree.dot', feature_names = np.array(data.drop(data.columns[[0]], axis=1)).T, rounded = True, precision = 1)
+#
+# (graph, ) = pydot.graph_from_dot_file('tree.dot')
+#
+# graph.write_png('tree.png')
