@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from sklearn.neural_network import MLPClassifier
 
 data = pd.read_csv('CMP3744M_ADM_Assignment 2-dataset-nuclear_plants.csv')
 data_iter = data.drop(data.columns[[0]], axis=1)
@@ -137,14 +138,14 @@ def sigmoid_deriv(z):
 def init_weights(input, hidden, output):
 
     np.random.seed(2)
-    w1 = np.random.randn(hidden, input) * 0.01
-    w1.shape
+    w1 = np.random.randn(hidden, input) * np.sqrt(2/(input-1))
+    print("w1",w1)
     b1 = np.zeros((hidden, 1))
-    b1.shape
-    w2 = np.random.randn(output, hidden) * 0.01
-    w2.shape
+    #b1.shape
+    w2 = np.random.randn(output, hidden)* np.sqrt(2/(hidden-1))
+    print("w2",w2)
     b2 = np.zeros((output, 1))
-    b2.shape
+    #b2.shape
 
     params = {"w1" : w1,
               "b1" : b1,
@@ -168,16 +169,16 @@ def forward_prop(X, params):
 
     # Layer 1 output, dot of layer 1 weights and X + layer 1 biases, "left side" of perceptron result
     z1 = w1 @ X + b1
-    z1.shape
+    #print("z1",z1.shape)
     # Result of layer one, p1 = sigma of l1, "right side" of perceptron result
     a1 = sigmoid(z1)
-    a1.shape
+    #print("a1",a1.shape)
     # Layer 2 output, dot of layer 2 weights and p1 + layer 2 biases, "left side" of perceptron result
     z2 = w2 @ a1 + b2
-    z2.shape
+    #print("z2",z2.shape)
     # Result of network, then used for update step, "right side" of perceptron result our prediction, "y_hat"
     a2 = sigmoid(z2)
-    a2.shape
+    #print("a2",a2.shape)
 
     # Store current results in dict to calculate cost and update weights.
     model = {"z1" : z1,
@@ -196,15 +197,15 @@ def back_prop(X,Y,params,model):
     m = X.shape[1]
 
     dz2 = a2 - Y
-    dz2.shape
+    #print("dz2",dz2.shape)
     dw2 = (1 / m) * dz2 @ a1.T
-    dw2.shape
+    #print("dw2",dw2.shape,"a1",a1.T.shape)
     db2 = (1 / m) * np.sum(dz2,axis=1,keepdims=True)
     db2.shape
-    dz1 = w2.T @ dz2 * sigmoid_deriv(a1)
-    dz1.shape
+    dz1 = np.multiply(w2.T @ dz2,sigmoid_deriv(a1))
+    #print("dz1",dz1.shape)
     dw1 = (1 / m) * dz1 @ X.T
-    dw1.shape
+    #print("dw1",dw1.shape)
     db1 = (1 / m) * np.sum(dz1,axis=1,keepdims=True)
     db1.shape
     gradients = {"dw1" : dw1,
@@ -272,13 +273,13 @@ def ANN(X,Y,hidden_nodes,iter, learning_rate):
         X = X[:,rp]
         Y = Y[:,rp]
 
-        if i % 100 == 0:
-            learning_rate = learning_rate * .9
-
         a2, model = forward_prop(X, params)
         loss = binary_crossentropy(a2, Y)
         gradients = back_prop(X,Y,params,model)
         params = update_step(learning_rate,params,gradients)
+
+        if i % 500 == 0:
+          learning_rate = learning_rate * .9
 
         # a2[a2<=0.5] = 0
         # a2[a2>0.5] = 1
@@ -289,8 +290,8 @@ def ANN(X,Y,hidden_nodes,iter, learning_rate):
         #acc = np.mean(((np.dot(Y, a2.T) + np.dot(1 - Y, 1 - a2.T)) / (Y.size) * 100))#find_acc(a2,Y)
 
         if i % 10 == 0:
-            print(i, loss, "acc: {:.2f}".format(acc), learning_rate)
+            print(i, loss, "acc: {:.2f}".format(acc), learning_rate, np.sum(Yhat == Y))
 
     return params
 
-params = ANN(X, Y,hidden_nodes=n_nodes[-1], iter=5000, learning_rate=1e-1)
+params = ANN(X, Y,hidden_nodes=n_nodes[-1], iter=50000, learning_rate=2e-1)
