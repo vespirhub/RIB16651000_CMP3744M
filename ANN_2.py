@@ -38,7 +38,7 @@ if nullcount == 0:
 # Compute Statistics
 for i, col in enumerate(data_iter):
     x = npdata[:,i]
-    median = str.format('{0:.4f}', np.median(x))
+    median = str.format('{0:.4f}',np.median(x))
     mean = str.format('{0:.4f}',np.mean(x))
     std = str.format('{0:.4f}',np.std(x))
     min = str.format('{0:.4f}',np.min(x))
@@ -56,7 +56,9 @@ for i, col in enumerate(data_iter):
 
 # Size of data, 996,13 |||| 12 Features ||||
 # Plots
+fig = plt.figure();
 sns.boxplot(x=norm_data[:,0],y=data['Status']);
+fig.savefig('boxplot.pdf')
 
 normals = np.array(data[data['Status'] == 'Normal'])
 abnormals = np.array(data[data['Status'] == 'Abnormal'])
@@ -64,7 +66,7 @@ abnormals = np.array(data[data['Status'] == 'Abnormal'])
 fig = plt.figure();
 sns.kdeplot(normals[:,5], color='red', shade=True, label="Normals");
 sns.kdeplot(abnormals[:,5], color='blue', shade=True, label="Abnormals");
-
+fig.savefig('density.pdf')
 # Outliers found in the rightmost side of the plot, we can prove this speculation by calculating the outliers.
 
 def find_outliers(normals,abnormals, feature):
@@ -303,7 +305,7 @@ def ANN(X, Y, X_val, Y_val, hidden_nodes, batch_size, epochs, learning_rate, sig
             if ((i % 100 == 0) & (i != 0)):
                 learning_rate = learning_rate * .9
         else:
-            if ((i % 50 == 0) & (i != 0)):
+            if ((i % 100 == 0) & (i != 0)):
                 learning_rate = learning_rate * .9
 
         counter = 0
@@ -378,43 +380,42 @@ for i in range(200):
     if ((a == 50) & (b == 50)):
         break
 
-sigmoid_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[-1],
-    batch_size=32, epochs=2000, learning_rate=0.12, sigmoid_=True, tanh_=False, relu_=False)
-tanh_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[-1],
+sigmoid_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[2],
+    batch_size=32, epochs=2500, learning_rate=0.18, sigmoid_=True, tanh_=False, relu_=False)
+tanh_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[2],
     batch_size=32, epochs=1000, learning_rate=0.7, sigmoid_=False, tanh_=True, relu_=False)
-relu_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[-1],
-    batch_size=32, epochs=1000, learning_rate=0.025, sigmoid_=False, tanh_=False, relu_=True)
+relu_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[2],
+    batch_size=32, epochs=1000, learning_rate=0.0475, sigmoid_=False, tanh_=False, relu_=True)
 
 acc_sigmoid = prediction(x_test,y_test,sigmoid_weights, sigmoid_=True, tanh_=False, relu_=False)
 print("Sigmoid Test Accuracy: {:.2f}".format(acc_sigmoid * 100))
 
 acc_tanh = prediction(x_test,y_test,tanh_weights, sigmoid_=False, tanh_=True, relu_=False)
-print("Sigmoid Test Accuracy: {:.2f}".format(acc_tanh * 100))
+print("Tanh Test Accuracy: {:.2f}".format(acc_tanh * 100))
 
 acc_relu = prediction(x_test,y_test,relu_weights, sigmoid_=False, tanh_=False, relu_=True)
-print("Sigmoid Test Accuracy: {:.2f}".format(acc_relu * 100))
+print("ReLU Test Accuracy: {:.2f}".format(acc_relu * 100))
 
-# y_tree = Y.T.flatten()
-# X_tree = norm_data
-#
-# x_train, x_test, y_train, y_test = train_test_split(X_tree, y_tree, test_size=0.1)
-#
-# model = RandomForestClassifier(n_estimators=100, min_samples_leaf=1);
-#
-# model.fit(x_train, y_train);
-#
-# predictions = model.predict(x_test)
-#
-# abs_errors = abs(predictions - y_test)
-#
-# acc = 100 * np.sum(predictions == y_test) / x_test.shape[0]
-#
-# print('Accuracy:', np.round(int(acc)), '%.')
-#
-# tree = model.estimators_[-1]
-#
-# export_graphviz(tree, out_file = 'tree.dot', feature_names = np.array(data.drop(data.columns[[0]], axis=1)).T, rounded = True, precision = 1)
-#
-# (graph, ) = pydot.graph_from_dot_file('tree.dot')
-#
-# graph.write_png('tree.png')
+y_tree = Y.T.flatten()
+X_tree = norm_data
+
+x_train, x_test, y_train, y_test = train_test_split(X_tree, y_tree, test_size=0.1)
+
+model = RandomForestClassifier(n_estimators=100, min_samples_leaf=1);
+
+model.fit(x_train, y_train);
+
+predictions = model.predict(x_test)
+
+abs_errors = abs(predictions - y_test)
+
+acc = 100 * np.sum(predictions == y_test) / x_test.shape[0]
+
+print('Accuracy:', np.round(int(acc)), '%.')
+
+tree = model.estimators_[-1]
+export_graphviz(tree, out_file = 'tree.dot', feature_names = np.array(data.drop(data.columns[[0]], axis=1)).T, rounded = True, precision = 1)
+(graph, ) = pydot.graph_from_dot_file('tree.dot')
+
+a = 'tree.dot'
+graph.write_png('tree100.png')
