@@ -399,43 +399,43 @@ for i in range(200):
         break
 
 # Sigmoid activation in hidden layer through boolean passing
-sigmoid_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[2],
-    batch_size=32, epochs=2500, learning_rate=0.18, sigmoid_=True, tanh_=False, relu_=False)
-# Tanh activation in hidden layer through boolean passing
-tanh_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[2],
-    batch_size=32, epochs=1000, learning_rate=0.7, sigmoid_=False, tanh_=True, relu_=False)
-# ReLU activation in hidden layer through boolean passing
-relu_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[2],
-    batch_size=32, epochs=1000, learning_rate=0.0475, sigmoid_=False, tanh_=False, relu_=True)
-
-# Test Results
-acc_sigmoid = prediction(x_test,y_test,sigmoid_weights, sigmoid_=True, tanh_=False, relu_=False)
-print("Sigmoid Test Accuracy: {:.2f}".format(acc_sigmoid * 100))
-
-acc_tanh = prediction(x_test,y_test,tanh_weights, sigmoid_=False, tanh_=True, relu_=False)
-print("Tanh Test Accuracy: {:.2f}".format(acc_tanh * 100))
-
-acc_relu = prediction(x_test,y_test,relu_weights, sigmoid_=False, tanh_=False, relu_=True)
-print("ReLU Test Accuracy: {:.2f}".format(acc_relu * 100))
-
-# Prepare Data for RCF
-y_tree = Y.T.flatten()
-X_tree = norm_data
-# SKLearn data split method
-x_train, x_test, y_train, y_test = train_test_split(X_tree, y_tree, test_size=0.1)
-
-# Create model with 100 Trees
-model = RandomForestClassifier(n_estimators=100, min_samples_leaf=10);
-# Fitting the RFC classifier to the training set
-model.fit(x_train, y_train);
-# Predicting on the test set
-predictions = model.predict(x_test)
-# Calculating absolute errors
-abs_errors = abs(predictions - y_test)
-# Performing accuracy metric, correct predictions over total samples
-acc = 100 * np.sum(predictions == y_test) / x_test.shape[0]
-
-print('Accuracy:', np.round(int(acc)), '%.')
+# sigmoid_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[2],
+#     batch_size=32, epochs=2500, learning_rate=0.18, sigmoid_=True, tanh_=False, relu_=False)
+# # Tanh activation in hidden layer through boolean passing
+# tanh_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[2],
+#     batch_size=32, epochs=1000, learning_rate=0.7, sigmoid_=False, tanh_=True, relu_=False)
+# # ReLU activation in hidden layer through boolean passing
+# relu_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[2],
+#     batch_size=32, epochs=1000, learning_rate=0.0475, sigmoid_=False, tanh_=False, relu_=True)
+#
+# # Test Results
+# acc_sigmoid = prediction(x_test,y_test,sigmoid_weights, sigmoid_=True, tanh_=False, relu_=False)
+# print("Sigmoid Test Accuracy: {:.2f}".format(acc_sigmoid * 100))
+#
+# acc_tanh = prediction(x_test,y_test,tanh_weights, sigmoid_=False, tanh_=True, relu_=False)
+# print("Tanh Test Accuracy: {:.2f}".format(acc_tanh * 100))
+#
+# acc_relu = prediction(x_test,y_test,relu_weights, sigmoid_=False, tanh_=False, relu_=True)
+# print("ReLU Test Accuracy: {:.2f}".format(acc_relu * 100))
+#
+# # Prepare Data for RCF
+# y_tree = Y.T.flatten()
+# X_tree = norm_data
+# # SKLearn data split method
+# x_train, x_test, y_train, y_test = train_test_split(X_tree, y_tree, test_size=0.1)
+#
+# # Create model with 100 Trees
+# model = RandomForestClassifier(n_estimators=100, min_samples_leaf=10);
+# # Fitting the RFC classifier to the training set
+# model.fit(x_train, y_train);
+# # Predicting on the test set
+# predictions = model.predict(x_test)
+# # Calculating absolute errors
+# abs_errors = abs(predictions - y_test)
+# # Performing accuracy metric, correct predictions over total samples
+# acc = 100 * np.sum(predictions == y_test) / x_test.shape[0]
+#
+# print('Accuracy:', np.round(int(acc)), '%.')
 
 # # COde to print a tree
 # tree = model.estimators_[-1]
@@ -489,28 +489,49 @@ x10 = X[:,tensplit*9:-1]
 y10 = Y[:,tensplit*9:-1]
 
 # Create list of the mini- training sets to iterate over for the K-Fold CV
-train_x = [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10]
-train_y = [y1,y2,y3,y4,y5,y6,y7,y8,y9,y10]
+fold_x = [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10]
+fold_y = [y1,y2,y3,y4,y5,y6,y7,y8,y9,y10]
 
 # Initialise result lists
 n1,n2,n3,tn1,tn2,tn3 = ([] for i in range(6))
 
-# Loop over all subsets
+# Loop over all k fold subsets
 for i in range(10):
-    p = 9
+    # Loop over neuron configs
     for j in range(3):
+
+        # Test is the current fold
+        x_test = fold_x[i]
+        y_test = fold_y[i]
+
+        # Training is anything except current k'th fold
+        x_train = fold_x[:i] + fold_x[i+1:]
+        y_train = fold_y[:i] + fold_y[i+1:]
+
+        x_train = np.hstack((x_train[0], x_train[1],
+                   x_train[2], x_train[3],
+                   x_train[4], x_train[5],
+                   x_train[6], x_train[7],
+                   x_train[8]))
+
+        y_train = np.hstack((y_train[0], y_train[1],
+                   y_train[2], y_train[3],
+                   y_train[4], y_train[5],
+                   y_train[6], y_train[7],
+                   y_train[8]))
+
         # Train and predict with sigmoid activation, validate on test set
-        sigmoid_weights = ANN(train_x[i], train_y[i],train_x[p],train_y[p], hidden_nodes=n_nodes[j],
+        sigmoid_weights = ANN(x_train, y_train, x_test, y_test, hidden_nodes=n_nodes[j],
             batch_size=32, epochs=1000, learning_rate=0.2, sigmoid_=True, tanh_=False, relu_=False)
-        acc_sigmoid = prediction(train_x[p],train_y[p],sigmoid_weights, sigmoid_=True, tanh_=False, relu_=False)
+        acc_sigmoid = prediction(x_test,y_test, sigmoid_weights, sigmoid_=True, tanh_=False, relu_=False)
         print("Sigmoid Test Accuracy: {:.2f}".format(acc_sigmoid * 100))
 
         # Train and predict with RFC, need to flatten and transpose some things to make dimensions match.
         model = RandomForestClassifier(n_estimators=n_trees[j], min_samples_leaf=1);
-        model.fit((train_x[i].T), (train_y[i].T.flatten()));
-        predictions = model.predict(train_x[p].T)
-        abs_errors = abs(predictions - train_y[p].T.flatten())
-        acc = np.sum(predictions == train_y[p].T.flatten()) / train_y[p].shape[0]
+        model.fit((x_train.T), (y_train.T.flatten()));
+        predictions = model.predict(x_test.T)
+        abs_errors = abs(predictions - y_test.T.flatten())
+        acc = np.sum(predictions == y_test.T.flatten()) / y_test.shape[0]
 
         # Append RESULTS
         if j == 0:
@@ -522,7 +543,6 @@ for i in range(10):
         elif j == 2:
             n3.append(acc_sigmoid*100)
             tn3.append(acc)
-        p = p -1
 
 # Result Percentages
 ann_25 = np.round((np.sum(n1) / 10))
