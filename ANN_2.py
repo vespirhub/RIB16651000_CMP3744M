@@ -9,7 +9,7 @@ from sklearn.tree import export_graphviz
 import pydot
 
 
-data = pd.read_csv('~/github/RIB16651000_CMP3744M/RIB16651000_CMP3744M-master/CMP3744M_ADM_Assignment 2-dataset-nuclear_plants.csv')
+data = pd.read_csv('CMP3744M_ADM_Assignment 2-dataset-nuclear_plants.csv')
 data_iter = data.drop(data.columns[[0]], axis=1)
 sns.set()
 
@@ -62,8 +62,8 @@ normals = np.array(data[data['Status'] == 'Normal'])
 abnormals = np.array(data[data['Status'] == 'Abnormal'])
 
 fig = plt.figure();
-sns.kdeplot(normals[:,5], color='red', shade=True);
-sns.kdeplot(abnormals[:,5], color='blue', shade=True);
+sns.kdeplot(normals[:,5], color='red', shade=True, label="Normals");
+sns.kdeplot(abnormals[:,5], color='blue', shade=True, label="Abnormals");
 
 # Outliers found in the rightmost side of the plot, we can prove this speculation by calculating the outliers.
 
@@ -120,14 +120,6 @@ for i in range(len(Y)):
     else:
         Y[i] = 0
 Y = Y.reshape(1, -1)
-
-Y.shape
-
-X = np.zeros(npdata.shape).T
-for i in range(len(npdata)):
-    X[:,i] = npdata[i,:]
-X.shape
-
 X = norm_data.T
 
 def sigmoid(z):
@@ -135,22 +127,40 @@ def sigmoid(z):
     z = 1 / (1 + np.exp(-z))
     return z
 
+def tanh(z):
+
+    z = np.sinh(z) / np.cosh(z)
+    return z
+
+def relu(z):
+
+    z = np.maximum(0, z)
+    return z
+
 def sigmoid_deriv(z):
 
     dz = sigmoid(z) * (1 - sigmoid(z))
     return dz
 
+def tanh_deriv(z):
+
+    dz = 1 - tanh(z)**2
+    return dz
+
+def relu_deriv(z):
+
+    z[z < 0] = 0
+    z[z > 0] = 1
+    return z
+
 def init_weights_he(input, hidden, output):
 
     np.random.seed(3)
     w1 = np.random.randn(hidden, input) * np.sqrt(2/(input-1))
-    #print("w1",w1)
     b1 = np.zeros((hidden, 1))
-    #b1.shape
     w2 = np.random.randn(output, hidden)* np.sqrt(2/(hidden-1))
-    #print("w2",w2)
     b2 = np.zeros((output, 1))
-    #b2.shape
+
 
     params = {"w1" : w1,
               "b1" : b1,
@@ -175,7 +185,7 @@ def init_weights_xavier(input,hidden,output):
 # params = init_weights(X.shape[0], n_nodes[1], 1)
 
 #Forward Propagation Step Function
-def forward_prop(X, params):
+def forward_prop(X, params, sigmoid_, tanh_, relu_):
 
     # Retrieve Current Weights and Biases from dict
     w1 = params['w1']
@@ -186,15 +196,16 @@ def forward_prop(X, params):
     # Layer 1 output, dot of layer 1 weights and X + layer 1 biases, "left side" of perceptron result
     z1 = w1 @ X + b1
     # Result of layer one, p1 = sigma of l1, "right side" of perceptron result
-    a1 = sigmoid(z1)
-    #print("a1",a1.shape)
+    if sigmoid_ == True:
+        a1 = sigmoid(z1)
+    elif tanh_ == True:
+        a1 = tanh(z1)
+    elif relu_ == True:
+        a1 = relu(z1)
     # Layer 2 output, dot of layer 2 weights and p1 + layer 2 biases, "left side" of perceptron result
     z2 = w2 @ a1 + b2
-    #print("z2",z2.shape)
     # Result of network, then used for update step, "right side" of perceptron result our prediction, "y_hat"
     a2 = sigmoid(z2)
-    #print("a2",a2.shape)
-
     # Store current results in dict to calculate cost and update weights.
     model = {"z1" : z1,
              "a1" : a1,
@@ -203,7 +214,7 @@ def forward_prop(X, params):
 
     return a2, model
 
-def back_prop(X,Y,params,model):
+def back_prop(X,Y,params,model,sigmoid_,tanh_,relu_):
 
     w1 = params['w1']
     w2 = params['w2']
@@ -213,14 +224,15 @@ def back_prop(X,Y,params,model):
     m = X.shape[1]
 
     dz2 = a2 - Y
-    #print("dz2",dz2.shape)
     dw2 = (1 / m) * dz2 @ a1.T
-    #print("dw2",dw2.shape,"a1",a1.T.shape)
     db2 = (1 / m) * np.sum(dz2,axis=1,keepdims=True)
-    dz1 = np.multiply(w2.T @ dz2, sigmoid_deriv(z1))
-    #print("dz1",dz1.shape)
+    if sigmoid_ == True:
+        dz1 = np.multiply(w2.T @ dz2, sigmoid_deriv(z1))
+    elif tanh_ == True:
+        dz1 = np.multiply(w2.T @ dz2, tanh_deriv(z1))
+    elif relu_ == True:
+        dz1 = np.multiply(w2.T @ dz2, relu_deriv(z1))
     dw1 = (1 / m) * dz1 @ X.T
-    #print("dw1",dw1.shape)
     db1 = (1 / m) * np.sum(dz1,axis=1,keepdims=True)
     gradients = {"dw1" : dw1,
                  "db1" : db1,
@@ -239,7 +251,6 @@ def find_acc(y_hat,y_true):
     tn = np.sum((y_true == 0) & (y_hat == 0))
 
     accuracy = (tp + tn) / (tp+tn+fp+fn)
-    #print('tp: {}' 'tn: {}' 'fp: {}' 'fn: {}'.format(tp,tn,fp,fn))
 
     return accuracy
 
@@ -267,15 +278,20 @@ def update_step(learning_rate, params, gradients):
     return params
 
 
-def ANN(X, Y, hidden_nodes, batch_size, epochs, learning_rate):
+def ANN(X, Y, X_val, Y_val, hidden_nodes, batch_size, epochs, learning_rate, sigmoid_, tanh_, relu_):
 
     x_size = X.shape[0]
-    x_size
     y_size = Y.shape[0]
 
     m = X.shape[1] # 996
+    n = X_val.shape[1] # 199
 
-    params = init_weights_xavier(x_size, hidden_nodes, y_size)
+    if ((sigmoid_ == True) or (tanh_ == True)):
+        params = init_weights_xavier(x_size, hidden_nodes, y_size)
+        print('x')
+    elif relu_ == True:
+        params = init_weights_he(x_size, hidden_nodes, y_size)
+        print('y')
 
     for i in range(epochs):
 
@@ -283,35 +299,101 @@ def ANN(X, Y, hidden_nodes, batch_size, epochs, learning_rate):
         x = X[:,rp]
         y = Y[:,rp]
 
-        if ((i % 500 == 0) & (i != 0)):
-          learning_rate = learning_rate * .9
+        if relu == True:
+            if ((i % 100 == 0) & (i != 0)):
+                learning_rate = learning_rate * .9
+        else:
+            if ((i % 50 == 0) & (i != 0)):
+                learning_rate = learning_rate * .9
 
         counter = 0
         for j in range(int(m/batch_size)):
 
-            x_train = x[:,counter:counter+batch_size]
-            y_train = y[:,counter:counter+batch_size]
+            if counter+batch_size > m:
+                x_train = x[:,counter:-1]
+                y_train = y[:,counter:-1]
+            else:
+                x_train = x[:,counter:counter+batch_size]
+                y_train = y[:,counter:counter+batch_size]
 
-            a2, model = forward_prop(x_train, params)
+            a2, model = forward_prop(x_train, params, sigmoid_, tanh_, relu_)
             loss = binary_crossentropy(a2, y_train)
-            gradients = back_prop(x_train,y_train,params,model)
+            gradients = back_prop(x_train,y_train,params,model, sigmoid_, tanh_, relu_)
             params = update_step(learning_rate,params,gradients)
 
             counter+=batch_size
 
-        a2, model = forward_prop(x, params)
-        loss = binary_crossentropy(a2, y)
-        Yhat = np.round(a2)
-        acc = find_acc(Yhat, y)
+        a2_train, model = forward_prop(X, params, sigmoid_, tanh_, relu_)
+        loss_train = binary_crossentropy(a2_train, Y)
+        Yhat_train = np.round(a2_train)
+        train_acc = find_acc(Yhat_train, Y)
 
-        print("epoch: {} - loss: {:.5f} - acc:{:.2f} - lr:{:.5f} - corrects: {}/{}".format(
-            i, loss, acc, learning_rate, np.sum(Yhat == y), m))
+        a2, model = forward_prop(X_val, params, sigmoid_, tanh_, relu_)
+        loss = binary_crossentropy(a2, Y_val)
+        Yhat = np.round(a2)
+        acc = find_acc(Yhat, Y_val)
+
+        if i % 100 == 0:
+            print("epoch: {} - train_loss: {:.5f} - train_acc:{:.2f} - train_corrects: {}/{} - lr:{:.5f}".format(
+                i, loss_train, train_acc, np.sum(Yhat_train == Y), m, learning_rate))
+            print("epoch: {} - valid_loss: {:.5f} - valid_acc:{:.2f}- val_corrects: {}/{}".format(
+                i, loss, acc, np.sum(Yhat == Y_val), n))
+
 
     return params
 
-params = ANN(X, Y, hidden_nodes=n_nodes[-1],
-    batch_size=12, epochs=50000, learning_rate=0.01)
-#
+def prediction(X,Y,params, sigmoid_, tanh_, relu_):
+
+    a2, model = forward_prop(X, params, sigmoid_, tanh_, relu_)
+    Yhat = np.round(a2)
+    acc = find_acc(Yhat, Y)
+
+    return acc
+
+
+for i in range(200):
+    np.random.seed(i)
+    rp = np.random.permutation(X.shape[1])
+
+    train_split = int(X.shape[1] * .8)
+    val_split = int(X.shape[1] * .1)
+    test_split = int(X.shape[1] * .1)
+
+    train_indices = rp[0:train_split]
+    val_indices = rp[train_split:train_split+val_split]
+    test_indices = rp[train_split+val_split:-1]
+
+    x_train = X[:,train_indices]
+    y_train = Y[:,train_indices]
+
+    x_val = X[:,val_indices]
+    y_val = Y[:,val_indices]
+
+    x_test = X[:,test_indices]
+    y_test = Y[:,test_indices]
+
+    a = np.sum(y_test)
+    b = np.sum(y_val)
+
+    if ((a == 50) & (b == 50)):
+        break
+
+sigmoid_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[-1],
+    batch_size=32, epochs=2000, learning_rate=0.12, sigmoid_=True, tanh_=False, relu_=False)
+tanh_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[-1],
+    batch_size=32, epochs=1000, learning_rate=0.7, sigmoid_=False, tanh_=True, relu_=False)
+relu_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[-1],
+    batch_size=32, epochs=1000, learning_rate=0.025, sigmoid_=False, tanh_=False, relu_=True)
+
+acc_sigmoid = prediction(x_test,y_test,sigmoid_weights, sigmoid_=True, tanh_=False, relu_=False)
+print("Sigmoid Test Accuracy: {:.2f}".format(acc_sigmoid * 100))
+
+acc_tanh = prediction(x_test,y_test,tanh_weights, sigmoid_=False, tanh_=True, relu_=False)
+print("Sigmoid Test Accuracy: {:.2f}".format(acc_tanh * 100))
+
+acc_relu = prediction(x_test,y_test,relu_weights, sigmoid_=False, tanh_=False, relu_=True)
+print("Sigmoid Test Accuracy: {:.2f}".format(acc_relu * 100))
+
 # y_tree = Y.T.flatten()
 # X_tree = norm_data
 #
