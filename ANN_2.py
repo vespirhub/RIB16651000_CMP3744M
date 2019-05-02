@@ -19,6 +19,7 @@ stats = ['Median','Mean','Std','Min','Max']
 statistics = {}
 nullcount = 0
 n_nodes = [25,100,500]
+n_trees = [10,50,100]
 
 # Check for Categorical Data
 # Labels are categorical : i.e Normal Abnormal
@@ -419,3 +420,78 @@ export_graphviz(tree, out_file = 'tree.dot', feature_names = np.array(data.drop(
 
 a = 'tree.dot'
 graph.write_png('tree100.png')
+
+tensplit = int(X.shape[1] / 10)
+
+rp = np.random.permutation(X.shape[1])
+
+X = X[:,rp]
+Y = Y[:,rp]
+
+x1 = X[:,0:tensplit]
+y1 = Y[:,0:tensplit]
+
+x2 = X[:,tensplit:tensplit*2]
+y2 = Y[:,tensplit:tensplit*2]
+
+x3 = X[:,tensplit*2:tensplit*3]
+y3 = Y[:,tensplit*2:tensplit*3]
+
+x4 = X[:,tensplit*3:tensplit*4]
+y4 = Y[:,tensplit*3:tensplit*4]
+
+x5 = X[:,tensplit*4:tensplit*5]
+y5 = Y[:,tensplit*4:tensplit*5]
+
+x6 = X[:,tensplit*5:tensplit*6]
+y6 = Y[:,tensplit*5:tensplit*6]
+
+x7 = X[:,tensplit*6:tensplit*7]
+y7 = Y[:,tensplit*6:tensplit*7]
+
+x8 = X[:,tensplit*7:tensplit*8]
+y8 = Y[:,tensplit*7:tensplit*8]
+
+x9 = X[:,tensplit*8:tensplit*9]
+y9 = Y[:,tensplit*8:tensplit*9]
+
+x10 = X[:,tensplit*9:-1]
+y10 = Y[:,tensplit*9:-1]
+
+train_x = [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10]
+train_y = [y1,y2,y3,y4,y5,y6,y7,y8,y9,y10]
+
+n1,n2,n3,tn1,tn2,tn3 = ([] for i in range(6))
+
+for i in range(10):
+
+    for j in range(3):
+
+        sigmoid_weights = ANN(train_x[i], train_y[i],train_x[i],train_y[i], hidden_nodes=n_nodes[j],
+            batch_size=32, epochs=500, learning_rate=0.18, sigmoid_=True, tanh_=False, relu_=False)
+        acc_sigmoid = prediction(train_x[-1],train_y[-1],sigmoid_weights, sigmoid_=True, tanh_=False, relu_=False)
+        print("Sigmoid Test Accuracy: {:.2f}".format(acc_sigmoid * 100))
+
+        model = RandomForestClassifier(n_estimators=n_trees[j], min_samples_leaf=1);
+        model.fit((train_x[i].T), (train_y[i].T.flatten()));
+        predictions = model.predict(train_x[-1].T)
+        abs_errors = abs(predictions - train_y[-1].T.flatten())
+        acc = np.sum(predictions == train_y[-1].T.flatten()) / train_y[-1].shape[0]
+
+        if j == 0:
+            n1.append(acc_sigmoid*100)
+            tn1.append(acc)
+        elif j == 1:
+            n2.append(acc_sigmoid*100)
+            tn2.append(acc)
+        elif j == 2:
+            n3.append(acc_sigmoid*100)
+            tn3.append(acc)
+
+ann_25 = np.round((np.sum(n1) / 10))
+ann_50 = np.round((np.sum(n2) / 10))
+ann_100 = np.round((np.sum(n3) / 10))
+
+rfc_10 = np.round((np.sum(tn1) / 10))
+rfc_50 = np.round((np.sum(tn2) / 10))
+rfc_100 = np.round((np.sum(tn3) / 10))
