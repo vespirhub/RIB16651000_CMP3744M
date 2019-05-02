@@ -217,6 +217,7 @@ def forward_prop(X, params, sigmoid_, tanh_, relu_):
 
     return a2, model
 
+# Backstep Through network to find the gradients for optimising.
 def back_prop(X,Y,params,model,sigmoid_,tanh_,relu_):
 
     w1 = params['w1']
@@ -243,10 +244,12 @@ def back_prop(X,Y,params,model,sigmoid_,tanh_,relu_):
                  "db2" : db2}
     return gradients
 
+# Optimizing the negative log(x) function
 def binary_crossentropy(y_hat, Y):
 
     return -(1 / Y.shape[1]) * np.sum((Y * np.log(y_hat) + (1 - Y) * np.log(1-y_hat)))
 
+# Accuracy metric using basic confusion matrix
 def find_acc(y_hat,y_true):
     tp = np.sum((y_true == 1) & (y_hat == 1))
     fn = np.sum((y_true == 1) & (y_hat == 0))
@@ -256,7 +259,7 @@ def find_acc(y_hat,y_true):
     accuracy = (tp + tn) / (tp+tn+fp+fn)
 
     return accuracy
-
+# Update step for the weights and bias using derivatives from backprop
 def update_step(learning_rate, params, gradients):
 
     w1 = params['w1']
@@ -280,7 +283,7 @@ def update_step(learning_rate, params, gradients):
               "b2": b2}
     return params
 
-
+# ANN where all functions are called
 def ANN(X, Y, X_val, Y_val, hidden_nodes, batch_size, epochs, learning_rate, sigmoid_, tanh_, relu_):
 
     x_size = X.shape[0]
@@ -289,6 +292,7 @@ def ANN(X, Y, X_val, Y_val, hidden_nodes, batch_size, epochs, learning_rate, sig
     m = X.shape[1] # 996
     n = X_val.shape[1] # 199
 
+    # Different initialisation depending on which activation function is used.
     if ((sigmoid_ == True) or (tanh_ == True)):
         params = init_weights_xavier(x_size, hidden_nodes, y_size)
         print('x')
@@ -296,12 +300,14 @@ def ANN(X, Y, X_val, Y_val, hidden_nodes, batch_size, epochs, learning_rate, sig
         params = init_weights_he(x_size, hidden_nodes, y_size)
         print('y')
 
+    # Random permutation of indices every loop, to shuffle the data
     for i in range(epochs):
 
         rp = np.random.permutation(X.shape[1])
         x = X[:,rp]
         y = Y[:,rp]
 
+        # Decrease Learning Rate by 10% of its current self every 100 epochs
         if relu == True:
             if ((i % 100 == 0) & (i != 0)):
                 learning_rate = learning_rate * .9
@@ -309,9 +315,11 @@ def ANN(X, Y, X_val, Y_val, hidden_nodes, batch_size, epochs, learning_rate, sig
             if ((i % 100 == 0) & (i != 0)):
                 learning_rate = learning_rate * .9
 
+        # Counter for batching
         counter = 0
         for j in range(int(m/batch_size)):
 
+            # Check if last batch is too large/small, create custom batch to end if so
             if counter+batch_size > m:
                 x_train = x[:,counter:-1]
                 y_train = y[:,counter:-1]
@@ -319,23 +327,31 @@ def ANN(X, Y, X_val, Y_val, hidden_nodes, batch_size, epochs, learning_rate, sig
                 x_train = x[:,counter:counter+batch_size]
                 y_train = y[:,counter:counter+batch_size]
 
+            # Retrieve yhat
             a2, model = forward_prop(x_train, params, sigmoid_, tanh_, relu_)
+            # Calculate Cross entropy from the label
             loss = binary_crossentropy(a2, y_train)
+            # Calculate derivatives through backprop
             gradients = back_prop(x_train,y_train,params,model, sigmoid_, tanh_, relu_)
+            # Update step with backprop derivatives
             params = update_step(learning_rate,params,gradients)
 
+            # Increase counter by batch size
             counter+=batch_size
 
+        # Train whole training set with new weights
         a2_train, model = forward_prop(X, params, sigmoid_, tanh_, relu_)
         loss_train = binary_crossentropy(a2_train, Y)
         Yhat_train = np.round(a2_train)
         train_acc = find_acc(Yhat_train, Y)
 
+        # Train validation set with new weights too
         a2, model = forward_prop(X_val, params, sigmoid_, tanh_, relu_)
         loss = binary_crossentropy(a2, Y_val)
         Yhat = np.round(a2)
         acc = find_acc(Yhat, Y_val)
 
+        # Print stats every 100 epochs
         if i % 100 == 0:
             print("epoch: {} - train_loss: {:.5f} - train_acc:{:.2f} - train_corrects: {}/{} - lr:{:.5f}".format(
                 i, loss_train, train_acc, np.sum(Yhat_train == Y), m, learning_rate))
@@ -347,13 +363,14 @@ def ANN(X, Y, X_val, Y_val, hidden_nodes, batch_size, epochs, learning_rate, sig
 
 def prediction(X,Y,params, sigmoid_, tanh_, relu_):
 
+    # Prediction function for test set
     a2, model = forward_prop(X, params, sigmoid_, tanh_, relu_)
     Yhat = np.round(a2)
     acc = find_acc(Yhat, Y)
 
     return acc
 
-
+# Lazy way of getting perfectly balanced data but it works.
 for i in range(200):
     np.random.seed(i)
     rp = np.random.permutation(X.shape[1])
@@ -381,13 +398,17 @@ for i in range(200):
     if ((a == 50) & (b == 50)):
         break
 
+# Sigmoid activation in hidden layer through boolean passing
 sigmoid_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[2],
     batch_size=32, epochs=2500, learning_rate=0.18, sigmoid_=True, tanh_=False, relu_=False)
+# Tanh activation in hidden layer through boolean passing
 tanh_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[2],
     batch_size=32, epochs=1000, learning_rate=0.7, sigmoid_=False, tanh_=True, relu_=False)
+# ReLU activation in hidden layer through boolean passing
 relu_weights = ANN(x_train, y_train, x_val, y_val, hidden_nodes=n_nodes[2],
     batch_size=32, epochs=1000, learning_rate=0.0475, sigmoid_=False, tanh_=False, relu_=True)
 
+# Test Results
 acc_sigmoid = prediction(x_test,y_test,sigmoid_weights, sigmoid_=True, tanh_=False, relu_=False)
 print("Sigmoid Test Accuracy: {:.2f}".format(acc_sigmoid * 100))
 
@@ -397,39 +418,46 @@ print("Tanh Test Accuracy: {:.2f}".format(acc_tanh * 100))
 acc_relu = prediction(x_test,y_test,relu_weights, sigmoid_=False, tanh_=False, relu_=True)
 print("ReLU Test Accuracy: {:.2f}".format(acc_relu * 100))
 
+# Prepare Data for RCF
 y_tree = Y.T.flatten()
 X_tree = norm_data
-
+# SKLearn data split method
 x_train, x_test, y_train, y_test = train_test_split(X_tree, y_tree, test_size=0.1)
 
-model = RandomForestClassifier(n_estimators=100, min_samples_leaf=1);
-
+# Create model with 100 Trees
+model = RandomForestClassifier(n_estimators=100, min_samples_leaf=10);
+# Fitting the RFC classifier to the training set
 model.fit(x_train, y_train);
-
+# Predicting on the test set
 predictions = model.predict(x_test)
-
+# Calculating absolute errors
 abs_errors = abs(predictions - y_test)
-
+# Performing accuracy metric, correct predictions over total samples
 acc = 100 * np.sum(predictions == y_test) / x_test.shape[0]
 
 print('Accuracy:', np.round(int(acc)), '%.')
 
-tree = model.estimators_[-1]
-export_graphviz(tree, out_file = 'tree.dot', feature_names = np.array(data.drop(data.columns[[0]], axis=1)).T, rounded = True, precision = 1)
-(graph, ) = pydot.graph_from_dot_file('tree.dot')
+# # COde to print a tree
+# tree = model.estimators_[-1]
+# export_graphviz(tree, out_file = 'tree.dot', feature_names = np.array(data.drop(data.columns[[0]], axis=1)).T, rounded = True, precision = 1)
+# (graph, ) = pydot.graph_from_dot_file('tree.dot')
+#
+# a = 'tree.dot'
+# graph.write_png('tree100.png')
 
-a = 'tree.dot'
-graph.write_png('tree100.png')
-
+# Integer division of total samples for splits
 tensplit = int(X.shape[1] / 10)
 
-
+# Seed for consistent pseudo-random
 np.random.seed(8)
+# Random index permutation for shuffle
 rp = np.random.permutation(X.shape[1])
 
+# Apply new indices
 X = X[:,rp]
 Y = Y[:,rp]
 
+# Split to ten sets
 x1 = X[:,0:tensplit]
 y1 = Y[:,0:tensplit]
 
@@ -460,26 +488,31 @@ y9 = Y[:,tensplit*8:tensplit*9]
 x10 = X[:,tensplit*9:-1]
 y10 = Y[:,tensplit*9:-1]
 
+# Create list of the mini- training sets to iterate over for the K-Fold CV
 train_x = [x1,x2,x3,x4,x5,x6,x7,x8,x9,x10]
 train_y = [y1,y2,y3,y4,y5,y6,y7,y8,y9,y10]
-train_x[9]
+
+# Initialise result lists
 n1,n2,n3,tn1,tn2,tn3 = ([] for i in range(6))
 
+# Loop over all subsets
 for i in range(10):
     p = 9
     for j in range(3):
-
+        # Train and predict with sigmoid activation, validate on test set
         sigmoid_weights = ANN(train_x[i], train_y[i],train_x[p],train_y[p], hidden_nodes=n_nodes[j],
             batch_size=32, epochs=1000, learning_rate=0.2, sigmoid_=True, tanh_=False, relu_=False)
         acc_sigmoid = prediction(train_x[p],train_y[p],sigmoid_weights, sigmoid_=True, tanh_=False, relu_=False)
         print("Sigmoid Test Accuracy: {:.2f}".format(acc_sigmoid * 100))
 
+        # Train and predict with RFC, need to flatten and transpose some things to make dimensions match.
         model = RandomForestClassifier(n_estimators=n_trees[j], min_samples_leaf=1);
         model.fit((train_x[i].T), (train_y[i].T.flatten()));
         predictions = model.predict(train_x[p].T)
         abs_errors = abs(predictions - train_y[p].T.flatten())
         acc = np.sum(predictions == train_y[p].T.flatten()) / train_y[p].shape[0]
 
+        # Append RESULTS
         if j == 0:
             n1.append(acc_sigmoid*100)
             tn1.append(acc)
@@ -491,6 +524,7 @@ for i in range(10):
             tn3.append(acc)
         p = p -1
 
+# Result Percentages
 ann_25 = np.round((np.sum(n1) / 10))
 ann_50 = np.round((np.sum(n2) / 10))
 ann_100 = np.round((np.sum(n3) / 10))
