@@ -13,6 +13,8 @@ data = pd.read_csv('CMP3744M_ADM_Assignment 2-dataset-nuclear_plants.csv')
 data_iter = data.drop(data.columns[[0]], axis=1)
 sns.set()
 
+# pb
+
 npdata = np.array(data.drop(data.columns[[0]], axis=1))
 labels = np.array(data['Status'])
 stats = ['Median','Mean','Std','Min','Max']
